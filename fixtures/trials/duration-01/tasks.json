@@ -1,0 +1,63 @@
+{
+  "name": "真实协作试用 duration-01：时长解析函数",
+  "maxSegment": 2,
+  "agents": [
+    { "id": "duration-dev-01", "categories": ["开发"] },
+    { "id": "duration-test-01", "categories": ["测试"] }
+  ],
+  "tasks": [
+    {
+      "id": "A1",
+      "title": "按 fixtures/trials/duration-01/任务卡.md 的A1发布接口与样例",
+      "category": "开发",
+      "owner": "duration-dev-01",
+      "dependsOn": [],
+      "resources": [
+        { "path": "fixtures/trials/duration-01/任务卡.md", "mode": "read" },
+        ".scheduler/trials/duration-01/contract.md"
+      ],
+      "outputs": ["contract"]
+    },
+    {
+      "id": "A2",
+      "title": "按 fixtures/trials/duration-01/任务卡.md 的A2实现parseDuration",
+      "category": "开发",
+      "owner": "duration-dev-01",
+      "dependsOn": ["A1"],
+      "resources": [
+        { "path": "fixtures/trials/duration-01/任务卡.md", "mode": "read" },
+        { "path": ".scheduler/trials/duration-01/contract.md", "mode": "read" },
+        ".scheduler/trials/duration-01/src/parse-duration.mjs"
+      ],
+      "outputs": ["implementation"]
+    },
+    {
+      "id": "B1",
+      "title": "按 fixtures/trials/duration-01/任务卡.md 的B1编写独立测试",
+      "category": "测试",
+      "owner": "duration-test-01",
+      "dependsOn": [{ "taskId": "A1", "output": "contract" }],
+      "resources": [
+        { "path": "fixtures/trials/duration-01/任务卡.md", "mode": "read" },
+        { "path": ".scheduler/trials/duration-01/contract.md", "mode": "read" },
+        ".scheduler/trials/duration-01/tests/parse-duration.test.mjs"
+      ],
+      "outputs": ["tests"]
+    },
+    {
+      "id": "B2",
+      "title": "按 fixtures/trials/duration-01/任务卡.md 的B2运行测试并保留原始结果",
+      "category": "测试",
+      "owner": "duration-test-01",
+      "dependsOn": ["A2", "B1"],
+      "resources": [
+        { "path": "fixtures/trials/duration-01/任务卡.md", "mode": "read" },
+        { "path": ".scheduler/trials/duration-01/contract.md", "mode": "read" },
+        { "path": ".scheduler/trials/duration-01/src/parse-duration.mjs", "mode": "read" },
+        { "path": ".scheduler/trials/duration-01/tests/parse-duration.test.mjs", "mode": "read" },
+        ".scheduler/trials/duration-01/evidence"
+      ],
+      "outputs": ["test-report"]
+    }
+  ]
+}

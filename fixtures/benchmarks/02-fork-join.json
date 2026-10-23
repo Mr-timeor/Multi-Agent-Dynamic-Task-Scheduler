@@ -1,0 +1,12 @@
+{
+  "name": "分叉汇合",
+  "description": "开发和测试各一名；汇合必须等两条分支实际完成。",
+  "project": { "name": "fork-join", "maxSegment": 3, "agents": [{ "id": "dev", "categories": ["dev"] }, { "id": "qa", "categories": ["qa"] }], "tasks": [
+    { "id": "A1", "category": "dev" },
+    { "id": "A2", "category": "dev", "dependsOn": ["A1"] },
+    { "id": "Q1", "category": "qa", "dependsOn": ["A1"] },
+    { "id": "A3", "category": "dev", "dependsOn": ["A2", "Q1"] }
+  ] },
+  "timing": { "A1": { "duration": 2 }, "A2": { "duration": 5 }, "Q1": { "duration": 3 }, "A3": { "duration": 2 } },
+  "dispatchOverhead": 1, "continuationOverhead": 0.1
+}

@@ -1,0 +1,12 @@
+{
+  "name": "共享文件与独立工作",
+  "description": "目录写入与文件读取互斥；测试执行者仍可先处理独立目录。",
+  "project": { "name": "resources", "maxSegment": 2, "agents": [{ "id": "dev", "categories": ["dev"] }, { "id": "qa", "categories": ["qa"] }], "tasks": [
+    { "id": "A1", "category": "dev", "resources": ["src/api"] },
+    { "id": "Q1", "category": "qa", "resources": [{ "path": "src/api/index.ts", "mode": "read" }] },
+    { "id": "Q2", "category": "qa", "resources": ["tests/unit"] },
+    { "id": "A2", "category": "dev", "dependsOn": ["A1", "Q1", "Q2"] }
+  ] },
+  "timing": { "A1": { "duration": 5 }, "Q1": { "duration": 2 }, "Q2": { "duration": 3 }, "A2": { "duration": 1 } },
+  "dispatchOverhead": 1, "continuationOverhead": 0.1
+}

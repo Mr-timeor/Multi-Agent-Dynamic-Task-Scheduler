@@ -1,0 +1,15 @@
+{
+  "name": "开发与测试协作示例",
+  "maxSegment": 4,
+  "agents": [
+    { "id": "developer", "categories": ["开发"] },
+    { "id": "tester", "categories": ["测试"] }
+  ],
+  "tasks": [
+    { "id": "A1", "title": "确认接口并发布样例", "category": "开发", "outputs": ["api"], "resources": ["src/api"] },
+    { "id": "A2", "title": "完成接口实现", "category": "开发", "dependsOn": ["A1"], "resources": ["src/api"] },
+    { "id": "B1", "title": "按接口编写测试", "category": "测试", "dependsOn": [{ "taskId": "A1", "output": "api" }], "resources": ["tests"] },
+    { "id": "B2", "title": "执行联合回归", "category": "测试", "dependsOn": ["A2", "B1"], "resources": [{ "path": "src", "mode": "read" }, "tests"], "review": true },
+    { "id": "A3", "title": "整理交付说明", "category": "开发", "dependsOn": ["B2"], "resources": ["docs"] }
+  ]
+}

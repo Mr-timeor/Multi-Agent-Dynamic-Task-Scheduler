@@ -1,0 +1,24 @@
+{
+  "name": "multi-agent-dynamic-task-scheduler",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "tsc && node scripts/build-bundle.mjs",
+    "build:core": "tsc",
+    "build:view": "npm run build:core && node scripts/build-view-bundle.mjs",
+    "package:local": "node scripts/package-local.mjs",
+    "test:view:host": "npm run build:view && powershell -NoProfile -ExecutionPolicy Bypass -File tests/view-host.ps1",
+    "benchmark": "npm run build:core && node dist/benchmark/run.js",
+    "test": "npm run build:core && node scripts/run-tests.mjs",
+    "test:host": "npm run build && node tests/host/setup-isolated.mjs && powershell -NoProfile -ExecutionPolicy Bypass -File tests/host/run-isolated.ps1",
+    "test:host:loop": "npm run build && node tests/host/setup-isolated.mjs && powershell -NoProfile -ExecutionPolicy Bypass -File tests/host/run-isolated.ps1 -Loop",
+    "demo": "npm run build:core && node dist/cli.js demo"
+  },
+  "bin": { "task-scheduler": "./dist/cli.js" },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.0"
+  }
+}

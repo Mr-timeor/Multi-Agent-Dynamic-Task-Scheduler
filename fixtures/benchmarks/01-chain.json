@@ -1,0 +1,11 @@
+{
+  "name": "串行链",
+  "description": "三个原子任务仍逐项报告；连续领取仅节省假设的派发开销。",
+  "project": { "name": "chain", "maxSegment": 3, "agents": [{ "id": "dev", "categories": ["dev"] }], "tasks": [
+    { "id": "A1", "category": "dev" },
+    { "id": "A2", "category": "dev", "dependsOn": ["A1"] },
+    { "id": "A3", "category": "dev", "dependsOn": ["A2"] }
+  ] },
+  "timing": { "A1": { "duration": 3 }, "A2": { "duration": 4 }, "A3": { "duration": 2 } },
+  "dispatchOverhead": 1, "continuationOverhead": 0.1
+}

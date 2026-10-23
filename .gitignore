@@ -1,3 +1,9 @@
 # 本地历史备份和机器生成的会话档案
 /.pi/backups/
 /.pi/session-archive.md
+/node_modules/
+/dist/
+/harness/bundle/dist/
+/harness/view-bundle/dist/
+/.harness-isolated/
+/.scheduler/

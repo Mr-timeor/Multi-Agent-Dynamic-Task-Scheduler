@@ -1,0 +1,10 @@
+{
+  "name": "020隔离唤醒探针：Lead无模型回合",
+  "maxSegment": 3,
+  "agents": [{ "id": "developer" }, { "id": "tester" }],
+  "tasks": [
+    { "id": "A1", "owner": "developer", "outputs": ["api"] },
+    { "id": "Q1", "owner": "tester", "dependsOn": [{ "taskId": "A1", "output": "api" }] },
+    { "id": "A2", "owner": "developer", "dependsOn": ["Q1"] }
+  ]
+}

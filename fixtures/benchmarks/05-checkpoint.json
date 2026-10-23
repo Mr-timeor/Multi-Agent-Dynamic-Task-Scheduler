@@ -1,0 +1,11 @@
+{
+  "name": "中间接口先交付",
+  "description": "接口在工作第2分钟交付、1分钟后验收；测试无需等开发任务整体完成。",
+  "project": { "name": "checkpoint", "maxSegment": 3, "agents": [{ "id": "dev", "categories": ["dev"] }, { "id": "qa", "categories": ["qa"] }], "tasks": [
+    { "id": "A1", "category": "dev", "outputs": ["api"], "review": true },
+    { "id": "Q1", "category": "qa", "dependsOn": [{ "taskId": "A1", "output": "api" }] },
+    { "id": "A2", "category": "dev", "dependsOn": ["A1", "Q1"] }
+  ] },
+  "timing": { "A1": { "duration": 8, "checkpoints": { "api": 2 }, "reviewDelay": 1 }, "Q1": { "duration": 3 }, "A2": { "duration": 1 } },
+  "dispatchOverhead": 1, "continuationOverhead": 0.1
+}

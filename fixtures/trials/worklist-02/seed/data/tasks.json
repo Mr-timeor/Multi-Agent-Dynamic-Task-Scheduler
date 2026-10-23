@@ -1,0 +1,8 @@
+[
+  { "id": "W4", "title": "补充发布说明", "status": "todo", "priority": 2 },
+  { "id": "W2", "title": "实现命令行", "status": "doing", "priority": 1 },
+  { "id": "W6", "title": "整理示例", "status": "done", "priority": 3 },
+  { "id": "W1", "title": "确认接口", "status": "done", "priority": 0 },
+  { "id": "W3", "title": "实现核心模块", "status": "doing", "priority": 1 },
+  { "id": "W5", "title": "独立回归测试", "status": "todo", "priority": 0 }
+]

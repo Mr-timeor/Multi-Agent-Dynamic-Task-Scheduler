@@ -1,0 +1,270 @@
+{
+  "name": "自动派发试用 worklist-03：同流程任务清单CLI",
+  "maxSegment": 3,
+  "agents": [
+    {
+      "id": "worklist-core-03",
+      "categories": [
+        "核心开发"
+      ]
+    },
+    {
+      "id": "worklist-cli-03",
+      "categories": [
+        "CLI开发"
+      ]
+    },
+    {
+      "id": "worklist-qa-03",
+      "categories": [
+        "独立测试"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "P1",
+      "title": "按 fixtures/trials/worklist-03/任务卡.md 的P1确认接口并立即交付",
+      "category": "核心开发",
+      "owner": "worklist-core-03",
+      "resources": [
+        {
+          "path": "fixtures/trials/worklist-03/任务卡.md",
+          "mode": "read"
+        },
+        {
+          "path": ".scheduler/trials/worklist-03/app/src/worklist.mjs",
+          "mode": "read"
+        },
+        ".scheduler/trials/worklist-03/contract.md"
+      ],
+      "outputs": [
+        "contract"
+      ]
+    },
+    {
+      "id": "D1",
+      "title": "按 fixtures/trials/worklist-03/任务卡.md 的D1升级纯核心模块",
+      "category": "核心开发",
+      "owner": "worklist-core-03",
+      "dependsOn": [
+        "P1"
+      ],
+      "resources": [
+        {
+          "path": "fixtures/trials/worklist-03/任务卡.md",
+          "mode": "read"
+        },
+        {
+          "path": ".scheduler/trials/worklist-03/contract.md",
+          "mode": "read"
+        },
+        ".scheduler/trials/worklist-03/app/src/worklist.mjs"
+      ],
+      "outputs": [
+        "core"
+      ]
+    },
+    {
+      "id": "C1",
+      "title": "按 fixtures/trials/worklist-03/任务卡.md 的C1升级CLI参数与错误处理",
+      "category": "CLI开发",
+      "owner": "worklist-cli-03",
+      "dependsOn": [
+        {
+          "taskId": "P1",
+          "output": "contract"
+        }
+      ],
+      "resources": [
+        {
+          "path": "fixtures/trials/worklist-03/任务卡.md",
+          "mode": "read"
+        },
+        {
+          "path": ".scheduler/trials/worklist-03/contract.md",
+          "mode": "read"
+        },
+        ".scheduler/trials/worklist-03/app/src/cli.mjs"
+      ],
+      "outputs": [
+        "cli"
+      ]
+    },
+    {
+      "id": "Q1",
+      "title": "按 fixtures/trials/worklist-03/任务卡.md 的Q1依据接口编写独立测试",
+      "category": "独立测试",
+      "owner": "worklist-qa-03",
+      "dependsOn": [
+        {
+          "taskId": "P1",
+          "output": "contract"
+        }
+      ],
+      "resources": [
+        {
+          "path": "fixtures/trials/worklist-03/任务卡.md",
+          "mode": "read"
+        },
+        {
+          "path": ".scheduler/trials/worklist-03/contract.md",
+          "mode": "read"
+        },
+        {
+          "path": ".scheduler/trials/worklist-03/app/data",
+          "mode": "read"
+        },
+        ".scheduler/trials/worklist-03/app/tests"
+      ],
+      "outputs": [
+        "tests"
+      ]
+    },
+    {
+      "id": "Q2",
+      "title": "按 fixtures/trials/worklist-03/任务卡.md 的Q2运行首轮回归并交付缺陷报告（完成报告不等于测试通过）",
+      "category": "独立测试",
+      "owner": "worklist-qa-03",
+      "dependsOn": [
+        "D1",
+        "C1",
+        "Q1"
+      ],
+      "resources": [
+        {
+          "path": "fixtures/trials/worklist-03/任务卡.md",
+          "mode": "read"
+        },
+        {
+          "path": ".scheduler/trials/worklist-03/contract.md",
+          "mode": "read"
+        },
+        {
+          "path": ".scheduler/trials/worklist-03/app",
+          "mode": "read"
+        },
+        ".scheduler/trials/worklist-03/evidence/initial"
+      ],
+      "outputs": [
+        "initial-report"
+      ]
+    },
+    {
+      "id": "D2",
+      "title": "按 fixtures/trials/worklist-03/任务卡.md 的D2处理真实核心缺陷或记录无需修复",
+      "category": "核心开发",
+      "owner": "worklist-core-03",
+      "dependsOn": [
+        "Q2"
+      ],
+      "resources": [
+        {
+          "path": "fixtures/trials/worklist-03/任务卡.md",
+          "mode": "read"
+        },
+        {
+          "path": ".scheduler/trials/worklist-03/contract.md",
+          "mode": "read"
+        },
+        {
+          "path": ".scheduler/trials/worklist-03/evidence/initial",
+          "mode": "read"
+        },
+        ".scheduler/trials/worklist-03/app/src/worklist.mjs",
+        ".scheduler/trials/worklist-03/notes/core-fix.md"
+      ],
+      "outputs": [
+        "core-disposition"
+      ]
+    },
+    {
+      "id": "C2",
+      "title": "按 fixtures/trials/worklist-03/任务卡.md 的C2处理真实CLI缺陷或记录无需修复",
+      "category": "CLI开发",
+      "owner": "worklist-cli-03",
+      "dependsOn": [
+        "Q2"
+      ],
+      "resources": [
+        {
+          "path": "fixtures/trials/worklist-03/任务卡.md",
+          "mode": "read"
+        },
+        {
+          "path": ".scheduler/trials/worklist-03/contract.md",
+          "mode": "read"
+        },
+        {
+          "path": ".scheduler/trials/worklist-03/evidence/initial",
+          "mode": "read"
+        },
+        ".scheduler/trials/worklist-03/app/src/cli.mjs",
+        ".scheduler/trials/worklist-03/notes/cli-fix.md"
+      ],
+      "outputs": [
+        "cli-disposition"
+      ]
+    },
+    {
+      "id": "Q3",
+      "title": "按 fixtures/trials/worklist-03/任务卡.md 的Q3执行最终复测；真实通过才completed",
+      "category": "独立测试",
+      "owner": "worklist-qa-03",
+      "dependsOn": [
+        "D2",
+        "C2"
+      ],
+      "resources": [
+        {
+          "path": "fixtures/trials/worklist-03/任务卡.md",
+          "mode": "read"
+        },
+        {
+          "path": ".scheduler/trials/worklist-03/contract.md",
+          "mode": "read"
+        },
+        {
+          "path": ".scheduler/trials/worklist-03/app",
+          "mode": "read"
+        },
+        {
+          "path": ".scheduler/trials/worklist-03/notes",
+          "mode": "read"
+        },
+        ".scheduler/trials/worklist-03/app/tests",
+        ".scheduler/trials/worklist-03/evidence/final"
+      ],
+      "outputs": [
+        "final-report"
+      ]
+    },
+    {
+      "id": "C3",
+      "title": "按 fixtures/trials/worklist-03/任务卡.md 的C3整理已验证的使用说明与交付",
+      "category": "CLI开发",
+      "owner": "worklist-cli-03",
+      "dependsOn": [
+        "Q3"
+      ],
+      "resources": [
+        {
+          "path": "fixtures/trials/worklist-03/任务卡.md",
+          "mode": "read"
+        },
+        {
+          "path": ".scheduler/trials/worklist-03/contract.md",
+          "mode": "read"
+        },
+        {
+          "path": ".scheduler/trials/worklist-03/evidence/final",
+          "mode": "read"
+        },
+        ".scheduler/trials/worklist-03/app/README.md"
+      ],
+      "outputs": [
+        "readme"
+      ]
+    }
+  ]
+}

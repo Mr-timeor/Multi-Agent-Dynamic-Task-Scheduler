@@ -1,0 +1,12 @@
+{
+  "name": "先解锁另一执行者",
+  "description": "输入先列独立长任务；解锁排序可先交付短前置，让测试与独立工作重叠。",
+  "project": { "name": "unlock-order", "maxSegment": 3, "agents": [{ "id": "dev", "categories": ["dev"] }, { "id": "qa", "categories": ["qa"] }], "tasks": [
+    { "id": "A0", "category": "dev" },
+    { "id": "A1", "category": "dev" },
+    { "id": "Q1", "category": "qa", "dependsOn": ["A1"] },
+    { "id": "A2", "category": "dev", "dependsOn": ["Q1"] }
+  ] },
+  "timing": { "A0": { "duration": 6 }, "A1": { "duration": 2 }, "Q1": { "duration": 6 }, "A2": { "duration": 1 } },
+  "dispatchOverhead": 1, "continuationOverhead": 0.1
+}

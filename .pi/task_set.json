@@ -2,23 +2,62 @@
   "任务集": {
     "名称": "Multi-Agent Dynamic Task Scheduler",
     "创建时间": "2026-10-20",
-    "说明": "仅承载未完成项；已授权文档整理和本地Git建库。实现、DSH配置和测试均未启动。详细依赖及验收见docs/任务清单.md和docs/阶段验收与评测.md。",
+    "说明": "2026-10-24：020已关闭；当前首版整理为本地Git快照，保留原初始提交。新增021远端推送，待用户给URL后才配置/推送，不自动创建远程仓库。另保留015机器档案及按需P3，用量不设门槛。",
     "任务列表": [
-      {"id":"T-20261020-001","标题":"P1 评审并冻结0.2设计与接口语义","路径":"D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler","状态":"待执行"},
-      {"id":"T-20261020-002","标题":"P1 复核agent-team公开接口和包解析证据","路径":"D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler","状态":"待执行"},
-      {"id":"T-20261020-003","标题":"P1 冻结存储方案角色与量化参数","路径":"D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler","状态":"待执行"},
-      {"id":"T-20261020-004","标题":"P1 核对拟用依赖许可证与适配成本","路径":"D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler","状态":"待执行"},
-      {"id":"T-20261020-005","标题":"P2 实现通用图诊断启发式与执行段规划","路径":"D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler","状态":"待执行"},
-      {"id":"T-20261020-006","标题":"P2 实现权威存储启动门禁与调配器","路径":"D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler","状态":"待执行"},
-      {"id":"T-20261020-007","标题":"P2 建立合成场景模拟执行器与公平基线","路径":"D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler","状态":"待执行"},
-      {"id":"T-20261020-008","标题":"P2 实现任务流程图和离线交互闭环","路径":"D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler","状态":"待执行"},
-      {"id":"T-20261020-010","标题":"P2 确定并验证Harness实验隔离与版本","路径":"D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler","状态":"待执行"},
-      {"id":"T-20261020-009","标题":"P2 接入agent-team成员通信与自建面板","路径":"D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler","状态":"待执行"},
-      {"id":"T-20261020-011","标题":"P2 开展受限真实开发测试协作试用","路径":"D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler","状态":"待执行"},
-      {"id":"T-20261020-012","标题":"P2 完成交付说明兼容边界和回归验收","路径":"D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler","状态":"待执行"},
-      {"id":"T-20261020-015","标题":"P2 更新会话档案","路径":"D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler","状态":"待执行"},
-      {"id":"T-20261020-013","标题":"P3 评估第二平台适配与能力降级","路径":"D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler","状态":"待执行"},
-      {"id":"T-20261020-014","标题":"P3 评估headless与跨进程执行备选","路径":"D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler","状态":"待执行"}
+      {
+        "id": "T-20261024-021",
+        "标题": "P2 配置Git远端并推送项目（待用户提供URL）",
+        "路径": "D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler",
+        "状态": "待执行",
+        "依赖": [],
+        "交付物": "用户指定远端的首版源码、测试和文档",
+        "验收": "收到URL后核对远端现状再推送并确认分支；不擅自公开仓库、不强制覆盖远端历史"
+      },
+      {
+        "id": "T-20261020-015",
+        "标题": "P2 更新会话档案",
+        "路径": "D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler",
+        "状态": "待执行",
+        "依赖": [],
+        "交付物": "机器生成会话档案",
+        "验收": "生成器可用后生成，不手写，不阻塞实现"
+      },
+      {
+        "id": "T-20261020-002b",
+        "标题": "P3 可选Lead日志存储探针",
+        "路径": "D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler",
+        "状态": "待执行",
+        "依赖": [],
+        "交付物": "自定义事件回放、压缩重建和增长成本评估",
+        "验收": "有需求后在约定环境执行，不阻塞JSON文件方案"
+      },
+      {
+        "id": "T-20261020-016",
+        "标题": "P3 多调度者与扩展恢复研究",
+        "路径": "D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler",
+        "状态": "待执行",
+        "依赖": [],
+        "交付物": "扩展可行性报告",
+        "验收": "有明确需求与宿主依据，首版不留占位"
+      },
+      {
+        "id": "T-20261020-013",
+        "标题": "P3 第二平台适配",
+        "路径": "D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler",
+        "状态": "待执行",
+        "依赖": [],
+        "交付物": "目标平台适配记录",
+        "验收": "用户选定目标后验证能力，不虚报兼容"
+      },
+      {
+        "id": "T-20261020-014",
+        "标题": "P3 headless备选",
+        "路径": "D:\\AAA project\\codex project\\Multi-Agent Dynamic Task Scheduler",
+        "状态": "待执行",
+        "依赖": [],
+        "交付物": "批处理备选评估",
+        "验收": "有明确需求后验证接管和共享状态边界"
+      }
     ]
   }
 }
