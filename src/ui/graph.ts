@@ -6,35 +6,88 @@ const escape = (s: unknown) => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;
 const json = (value: unknown) => JSON.stringify(value).replaceAll("<", "\\u003c");
 const labels: Record<string, string> = { pending: "待执行", running: "执行中", review: "待验收", completed: "已完成", failed: "失败", blocked: "阻塞", awaiting: "待回执", active: "执行中", unknown: "待对账", finished: "本轮已结束" };
 
+type Task = State["project"]["tasks"][number];
+
+// 竖向拓扑：一列一阶段，依赖只从上往下；卡片按类别分色，同一类别在行内相邻。
+const NODE_W = 292, NODE_H = 112, GAP_X = 36, GROUP_GAP = 34, ROW_GAP = 56, PAD = 26, TOP = 80;
+const TONES: Record<string, { accent: string; text: string }> = {
+  ready: { accent: "#5f9fd8", text: "#dceeff" },
+  pending: { accent: "#6b7f96", text: "#e4edf8" },
+  running: { accent: "#38bdf8", text: "#dff4ff" },
+  review: { accent: "#f5b942", text: "#fff3d6" },
+  completed: { accent: "#34d399", text: "#dcfcef" },
+  failed: { accent: "#fb7185", text: "#ffe1e6" },
+  blocked: { accent: "#a78bfa", text: "#eee4ff" },
+  unknown: { accent: "#c084fc", text: "#f1e6ff" }
+};
+const CATEGORY_COLORS = ["#5aa9e6", "#f0a94c", "#59c9a5", "#b98be8", "#ef8297", "#7fc4d8", "#d4c46a"];
+const short = (s: string, max: number) => s.length > max ? s.slice(0, max) + "…" : s;
+// 粗略字宽：中文按 12px、其余按 6.8px 估算，用于状态胶囊背景。
+const textWidth = (s: string) => [...s].reduce((w, c) => w + (c.charCodeAt(0) > 255 ? 12 : 6.8), 0);
+function wrap(text: string, max: number, lines = 2): string[] {
+  const chars = [...text], out: string[] = [];
+  for (let i = 0; i < chars.length && out.length < lines; i += max) out.push(chars.slice(i, i + max).join(""));
+  if (out.length === lines && chars.length > max * lines) out[lines - 1] = [...out[lines - 1]].slice(0, max - 1).join("") + "…";
+  return out.length ? out : [text];
+}
+// 折线连接：先竖直下探、再横移、再竖直落到下一阶段，拐角做圆角。
+function connector(sx: number, sy: number, ex: number, ey: number): string {
+  const dx = ex - sx, dy = ey - sy;
+  if (Math.abs(dx) < 1.5 || dy < 12) return `M${sx},${sy} L${ex},${ey}`;
+  const mid = (sy + ey) / 2, dir = dx > 0 ? 1 : -1, r = Math.min(16, Math.abs(dx) / 2, dy / 2);
+  return `M${sx},${sy} L${sx},${mid - r} Q${sx},${mid} ${sx + dir * r},${mid} L${ex - dir * r},${mid} Q${ex},${mid} ${ex},${mid + r} L${ex},${ey}`;
+}
+
 export function renderGraph(state: State, options: GraphOptions = {}): string {
-  const p = plan(state), levels = new Map<string, number>();
+  const p = plan(state), tasks: Task[] = state.project.tasks;
+  const levels = new Map<string, number>();
   function level(id: string, visiting = new Set<string>()): number {
     if (levels.has(id)) return levels.get(id)!;
     if (visiting.has(id)) return 0;
     visiting.add(id);
-    const task = state.project.tasks.find(t => t.id === id);
+    const task = tasks.find(t => t.id === id);
     const n = task?.dependsOn.length ? 1 + Math.max(...task.dependsOn.map(d => level(d.taskId, new Set(visiting)))) : 0;
     levels.set(id, n); return n;
   }
+  for (const t of tasks) level(t.id);
+
+  const categories = [...new Set(tasks.map(t => t.category))];
+  const categoryOrder = new Map(categories.map((c, i) => [c, i]));
+  const categoryColor = new Map(categories.map((c, i) => [c, CATEGORY_COLORS[i % CATEGORY_COLORS.length]]));
+
+  // 按阶段分行；行内先按类别分组，让同类别任务挨在一起。
+  const byLevel = new Map<number, Task[]>();
+  for (const t of tasks) {
+    const bucket = byLevel.get(level(t.id));
+    if (bucket) bucket.push(t); else byLevel.set(level(t.id), [t]);
+  }
+  const rowLevels = [...byLevel.keys()].sort((a, b) => a - b);
   const positions = new Map<string, { x: number; y: number }>();
-  const categories = [...new Set(state.project.tasks.map(t => t.category))];
-  let laneY = 18;
-  const lanes = categories.map(category => {
-    const columns = new Map<number, number>(), top = laneY;
-    for (const t of state.project.tasks.filter(t => t.category === category)) {
-      const column = level(t.id), row = columns.get(column) ?? 0;
-      columns.set(column, row + 1);
-      positions.set(t.id, { x: 32 + column * 290, y: top + 42 + row * 126 });
+  let contentWidth = 0;
+  const rowTop = (row: number) => TOP + row * (NODE_H + ROW_GAP);
+  rowLevels.forEach((value, row) => {
+    const rowTasks = byLevel.get(value)!.sort((a, b) =>
+      (categoryOrder.get(a.category)! - categoryOrder.get(b.category)!) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    let x = PAD, previous = "";
+    for (const t of rowTasks) {
+      if (previous && previous !== t.category) x += GROUP_GAP;
+      positions.set(t.id, { x, y: rowTop(row) });
+      x += NODE_W + GAP_X;
+      previous = t.category;
     }
-    const height = 54 + Math.max(1, ...columns.values()) * 126;
-    laneY += height + 14;
-    return { category, top, height };
+    contentWidth = Math.max(contentWidth, x - GAP_X + PAD);
   });
-  const width = Math.max(900, ...[...positions.values()].map(v => v.x + 270));
-  const height = Math.max(350, laneY);
-  const colors: Record<string, string> = { pending: "#334155", running: "#126f96", review: "#956900", completed: "#177353", failed: "#a63745", blocked: "#704c92" };
+  const width = Math.max(1000, contentWidth);
+  const height = Math.max(420, rowLevels.length ? rowTop(rowLevels.length - 1) + NODE_H + 52 : 420);
+
   const segmentFor = new Map(p.segments.flatMap((s, i) => s.tasks.map(id => [id, i + 1] as const)));
-  const short = (s: string, max: number) => s.length > max ? s.slice(0, max) + "…" : s;
+  function tone(id: string): string {
+    const progress = state.progress[id], run = [...state.runs].reverse().find(r => r.taskId === id);
+    if (progress.status === "running") return run?.phase === "unknown" ? "unknown" : "running";
+    if (progress.status !== "pending") return progress.status;
+    const reasons = p.blocked[id] ?? [];
+    return reasons.some(r => r.includes("授权") || r.includes("资源")) ? "blocked" : "pending";
+  }
   function status(id: string): string {
     const progress = state.progress[id], run = [...state.runs].reverse().find(r => r.taskId === id);
     if (progress.status === "running" && run) return labels[run.phase];
@@ -43,7 +96,7 @@ export function renderGraph(state: State, options: GraphOptions = {}): string {
     return reasons.some(r => r.includes("授权")) ? "等待授权" : reasons.some(r => r.includes("资源")) ? "资源等待"
       : reasons.some(r => r.startsWith("等待")) ? "等待前置" : state.paused ? "调度已暂停" : p.ready.includes(id) ? "可领取" : "待分配";
   }
-  const details = Object.fromEntries(state.project.tasks.map(t => {
+  const details = Object.fromEntries(tasks.map(t => {
     const progress = state.progress[t.id], run = [...state.runs].reverse().find(r => r.taskId === t.id);
     const checkpoint = p.segments.flatMap(s => s.checkpoints).filter(c => c.taskId === t.id);
     const reasons = (p.blocked[t.id] ?? []).filter(r => !r.startsWith("状态："));
@@ -60,41 +113,128 @@ export function renderGraph(state: State, options: GraphOptions = {}): string {
       `产物：${Object.entries(progress.outputs).map(([name, o]) => `${name}：${o.reference}（${o.accepted ? "已接受" : "待验收"}）`).join("；") || "无"}`
     ].join("\n\n")];
   }));
-  const edges = state.project.tasks.flatMap(t => t.dependsOn.map(d => {
+
+  // 边：父任务底部中心 → 子任务顶部中心，竖向走线。
+  const edges = tasks.flatMap(t => t.dependsOn.map((d, k) => {
     const a = positions.get(d.taskId), b = positions.get(t.id);
-    return a && b ? `<path d="M${a.x + 242},${a.y + 52} C${a.x + 266},${a.y + 52} ${b.x - 22},${b.y + 52} ${b.x},${b.y + 52}" marker-end="url(#arrow)"><title>${escape(d.taskId)} → ${escape(t.id)}${d.output ? "/" + escape(d.output) : ""}</title></path>${d.output ? `<text class="edge-label" x="${b.x - 36}" y="${b.y + 40}">${escape(short(d.output, 9))}</text>` : ""}` : "";
+    if (!a || !b) return "";
+    const sx = a.x + NODE_W / 2, sy = a.y + NODE_H, ex = b.x + NODE_W / 2, ey = b.y;
+    const label = d.output
+      ? `<text class="edge-label" x="${ex + 9}" y="${ey - 11 - k * 14}">${escape(short(d.output, 10))}</text>` : "";
+    return `<path class="edge" d="${connector(sx, sy, ex, ey)}" marker-end="url(#arrow)"><title>${escape(d.taskId)} → ${escape(t.id)}${d.output ? "/" + escape(d.output) : ""}</title></path>${label}`;
   })).join("");
-  const nodes = state.project.tasks.map(t => {
-    const pos = positions.get(t.id)!, progress = state.progress[t.id];
+
+  const stages = rowLevels.map((_, row) => {
+    const top = rowTop(row);
+    return `<g class="stage"><line class="stage-rule" x1="108" y1="${top - 32}" x2="${width - PAD}" y2="${top - 32}"/>`
+      + `<rect class="stage-pill" x="${PAD}" y="${top - 44}" width="68" height="24" rx="12"/>`
+      + `<text class="stage-label" x="${PAD + 34}" y="${top - 27}" text-anchor="middle">阶段 ${row + 1}</text></g>`;
+  }).join("");
+
+  const nodes = tasks.map(t => {
+    const pos = positions.get(t.id)!;
     const run = [...state.runs].reverse().find(r => r.taskId === t.id);
     const executor = run?.agentId ?? t.owner ?? p.segments.find(s => s.tasks.includes(t.id))?.agentId ?? "待分配";
     const display = status(t.id), segment = segmentFor.get(t.id);
-    return `<g class="node" data-id="${escape(t.id)}" tabindex="0" role="button" aria-label="${escape(t.id + " " + t.title + "，" + display)}" transform="translate(${pos.x},${pos.y})">
-      <title>${escape(t.title)} · ${escape(executor)}</title><rect width="242" height="108" rx="12" fill="${colors[progress.status]}"/>
-      <text x="12" y="23" class="node-id">${escape(t.id)}${segment ? ` · 建议段 ${segment}` : ""}</text>
-      <text x="12" y="48">${escape(short(t.title, 18))}</text><text x="12" y="72">${escape(display)}</text>
-      <text x="12" y="94" class="node-id">${escape(short(executor, 28))}</text></g>`;
+    const toneDef = TONES[tone(t.id)] ?? TONES.pending;
+    const pillW = Math.round(textWidth(display) + 22), pillX = NODE_W - 14 - pillW;
+    const titleLines = wrap(t.title, 17, 2), titleY = titleLines.length > 1 ? [57, 78] : [66];
+    return `<g class="node" data-id="${escape(t.id)}" data-category="${escape(t.category)}" tabindex="0" role="button" aria-label="${escape(t.id + " " + t.title + "，" + display)}" transform="translate(${pos.x},${pos.y})">
+      <title>${escape(t.title)} · ${escape(executor)}</title>
+      <rect class="card" width="${NODE_W}" height="${NODE_H}" rx="14"/>
+      <rect class="accent" x="1" y="20" width="4" height="${NODE_H - 40}" rx="2" fill="${toneDef.accent}"/>
+      <text class="node-id" x="18" y="25">${escape(short(`${t.id}${segment ? ` · 建议段 ${segment}` : ""}`, 26))}</text>
+      <rect x="${pillX}" y="12" width="${pillW}" height="23" rx="11.5" fill="${toneDef.accent}" fill-opacity=".16" stroke="${toneDef.accent}" stroke-opacity=".5"/>
+      <text class="status-text" x="${pillX + pillW / 2}" y="28" text-anchor="middle" fill="${toneDef.text}">${escape(display)}</text>
+      ${titleLines.map((line, i) => `<text class="node-title" x="18" y="${titleY[i]}">${escape(line)}</text>`).join("")}
+      <circle class="cat-dot" cx="23" cy="93" r="3.6" fill="${categoryColor.get(t.category) ?? CATEGORY_COLORS[0]}"/>
+      <text class="cat-name" x="33" y="97">${escape(short(t.category, 8))}</text>
+      <text class="node-meta" x="${NODE_W - 16}" y="97" text-anchor="end">${escape(short(executor, 14))}</text>
+    </g>`;
   }).join("");
+
+  const done = tasks.filter(t => state.progress[t.id].status === "completed").length;
+  const running = tasks.filter(t => state.progress[t.id].status === "running").length;
+  const percent = tasks.length ? Math.round(done / tasks.length * 100) : 0;
+  const statusLegend = [["#64748b", "待执行"], ["#5f9fd8", "就绪"], ["#38bdf8", "执行中／待回执"], ["#f5b942", "待验收"], ["#34d399", "已完成"], ["#a78bfa", "阻塞"], ["#fb7185", "失败"]]
+    .map(([color, label]) => `<span class="item"><i class="dot" style="background:${color}"></i>${label}</span>`).join("");
+  const categoryLegend = categories
+    .map(c => `<span class="item"><i class="dot" style="background:${categoryColor.get(c)}"></i>${escape(c)}</span>`).join("");
   const interval = options.refreshIntervalMs;
   const refresh = options.refreshUrl ? { url: options.refreshUrl, interval: Number.isFinite(interval) ? Math.max(500, interval!) : 2000 } : null;
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>${escape(state.project.name)}</title><style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#101825;color:#e5edf7;font:15px system-ui}header,footer{padding:20px 28px}h1{margin:0 0 8px;font-size:24px}p{line-height:1.6}
-button,input{padding:9px 12px;border:1px solid #62738c;border-radius:7px;background:#1d2a40;color:inherit;margin:5px 6px 5px 0}button{cursor:pointer}button:disabled{opacity:.5;cursor:wait}input{width:min(360px,100%)}.muted{color:#a6b7cd}.toolbar{margin-top:10px;display:flex;flex-wrap:wrap;align-items:center;gap:0 6px}#refresh-status{font-size:13px;margin:8px 0}.error{color:#ffb3bb}
-main{display:grid;grid-template-columns:minmax(0,1fr) 330px}#canvas{overflow:auto;min-height:440px;border-block:1px solid #334155}aside{padding:18px;overflow:auto}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.6 system-ui}
-svg text{fill:#e5edf7;font:13px system-ui}svg path{stroke:#8196b0;fill:none;stroke-width:1.6}.lane{fill:#172131;stroke:#293b50}.lane-label{font-weight:600;fill:#a6b7cd}.edge-label{font-size:11px;paint-order:stroke;stroke:#101825;stroke-width:4px}.node-id{fill:#c2d4e8;font-size:11px}.node{cursor:pointer}.node:focus rect,.node:hover rect,.node.selected rect{stroke:#eaf5ff;stroke-width:2}.dim{opacity:.18}li{margin-bottom:12px;line-height:1.6}.segment-title{font-weight:600}.legend{font-size:12px;margin-top:8px}@media(max-width:800px){main{grid-template-columns:1fr}header,footer{padding:18px}aside{border-bottom:1px solid #334155}}
-</style></head><body><header><h1>${escape(state.project.name)}</h1>
-<div id="overview" data-scheduler-revision="${state.revision}">${refresh ? "只读实时视图" : "只读快照"} · revision ${state.revision} · ${state.paused ? "已暂停" : "可调度"} · ${state.project.tasks.length} 个任务 · ${p.ready.length} 个就绪</div>
-<div class="toolbar"><input id="search" type="search" aria-label="搜索任务、类别或执行者" placeholder="搜索任务、类别或执行者"><button id="minus" aria-label="缩小流程图">−</button><button id="plus" aria-label="放大流程图">＋</button>${refresh ? '<button id="refresh">刷新状态</button>' : ""}</div>
-<div id="refresh-status" class="muted" role="status">${refresh ? "等待首次更新；刷新只读取状态。" : "静态快照；重新导出后刷新浏览器查看。"}</div>
-<div class="legend muted">灰：待执行　蓝：执行中／待回执　绿：完成　黄：待验收　紫：阻塞　红：失败</div></header>
+:root{color-scheme:dark;--bg:#0a111d;--line:#1f2f45;--text:#e8f0fa;--muted:#93a7c1}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;color:var(--text);font:15px/1.6 "Segoe UI","Microsoft YaHei UI","PingFang SC",system-ui,sans-serif;
+background:radial-gradient(1100px 520px at 6% -14%,rgba(38,84,138,.5),transparent 62%),radial-gradient(900px 460px at 106% 2%,rgba(70,54,124,.42),transparent 60%),var(--bg);-webkit-font-smoothing:antialiased}
+h1{margin:0;font-size:26px;font-weight:650;letter-spacing:.4px}h2{margin:0;font-size:15px;font-weight:600;letter-spacing:.3px}
+header{padding:26px 30px 16px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(16,27,44,.74),rgba(10,17,29,.08))}
+.hero{display:flex;gap:26px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}.hero-main{min-width:0}
+.sub{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
+.chip{display:inline-flex;align-items:center;padding:4px 11px;border-radius:999px;border:1px solid var(--line);background:rgba(20,32,51,.72);color:var(--muted);font-size:12.5px;white-space:nowrap}
+.chip.ok{color:#7ee2b8;border-color:rgba(52,211,153,.35);background:rgba(52,211,153,.1)}.chip.warn{color:#f7c56b;border-color:rgba(245,185,66,.35);background:rgba(245,185,66,.1)}
+.progress{width:110px;height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin-left:4px}
+.progress span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#34d399,#5ee7b5)}
+.legend{display:flex;flex-wrap:wrap;gap:7px 14px;justify-content:flex-end;max-width:560px;font-size:12.5px;color:var(--muted);padding-top:6px}
+.legend .item{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.legend-label{color:#617792;font-size:11.5px;letter-spacing:.5px;align-self:center}
+.dot{width:8px;height:8px;border-radius:50%;box-shadow:0 0 0 3px rgba(255,255,255,.05)}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px}
+.search{position:relative;flex:1 1 300px;max-width:430px;display:flex;align-items:center}
+.search svg{position:absolute;left:12px;width:15px;height:15px;color:#7b91ac;pointer-events:none}
+input{width:100%;padding:10px 12px 10px 35px;border-radius:10px;border:1px solid var(--line);background:rgba(12,21,35,.92);color:var(--text);font:inherit;font-size:14px;outline:none;transition:border-color .15s,box-shadow .15s}
+input::placeholder{color:#6d829d}input:focus{border-color:#3f78b8;box-shadow:0 0 0 3px rgba(89,168,255,.16)}
+button{display:inline-flex;align-items:center;justify-content:center;min-width:40px;padding:9px 14px;border-radius:10px;border:1px solid var(--line);background:rgba(22,35,56,.92);color:#d7e5f7;font:inherit;font-size:14px;cursor:pointer;transition:border-color .15s,background .15s,transform .06s}
+button:hover{border-color:#3b5b80;background:rgba(31,48,75,.95)}button:active{transform:translateY(1px)}button:disabled{opacity:.55;cursor:wait}
+button.primary{background:linear-gradient(180deg,#3183db,#2568b4);border-color:#3f8de0;color:#fff}button.primary:hover{background:linear-gradient(180deg,#3c90e6,#2a72c0)}
+.zoom{display:flex;gap:6px}#refresh-status{font-size:12.5px;color:var(--muted);margin-left:auto}.error{color:#ff9aa6}
+main{display:grid;grid-template-columns:minmax(0,1fr) 340px;align-items:stretch}
+#canvas{overflow:auto;min-height:480px;padding:6px 0 20px}
+#canvas svg{display:block}aside{border-left:1px solid var(--line);background:linear-gradient(180deg,rgba(16,27,44,.9),rgba(10,17,29,.55));padding:22px 24px}
+.aside-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding-bottom:12px;margin-bottom:14px;border-bottom:1px solid var(--line)}
+.aside-head b{font-size:15px;letter-spacing:.3px}.aside-head span{font-size:12px;color:#6f86a1}
+#detail{margin:0;font-family:inherit;font-size:13.5px;line-height:1.95;color:#c6d6e9;white-space:pre-wrap;overflow-wrap:anywhere}
+svg text{fill:#dbe7f6;font-family:inherit}
+.node{cursor:pointer}.node .card{fill:url(#card);stroke:#2a3b53;stroke-width:1;transition:stroke .15s}
+.node:hover .card{stroke:#5f8fc4}.node:focus{outline:none}.node:focus-visible .card{stroke:#9cc8f8;stroke-width:1.6}
+.node.selected .card{stroke:#a8d4ff;stroke-width:1.8}.node.dim{opacity:.14}
+.node-id{font-size:11px;fill:#8fa6c2;letter-spacing:.3px}.node-title{font-size:14.5px;font-weight:600;fill:#eaf2fc}
+.node-meta{font-size:11px;fill:#8aa0bc}.cat-name{font-size:11px;fill:#9fb4cf}.status-text{font-size:11px;font-weight:600}
+.edge{fill:none;stroke:#41597a;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.edge-label{font-size:10.5px;fill:#7f97b5;paint-order:stroke;stroke:#0a111d;stroke-width:4px;stroke-linejoin:round}
+.stage-rule{stroke:#22344b;stroke-dasharray:2 6;stroke-width:1}.stage-pill{fill:#141f31;stroke:#243550}
+.stage-label{font-size:11.5px;fill:#8fa6c2;letter-spacing:.6px}
+footer{padding:26px 30px 34px;border-top:1px solid var(--line);background:linear-gradient(180deg,rgba(10,17,29,.18),rgba(13,22,36,.72))}
+#segments ul{list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(286px,1fr));gap:12px;margin:14px 0 0;padding:0}
+#segments li{margin:0;padding:14px 16px;border-radius:12px;border:1px solid var(--line);background:rgba(18,29,47,.85)}
+.segment-title{font-size:13px;font-weight:600;color:#cfe3fb;letter-spacing:.3px}
+.seg-tasks{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px;font-size:12.5px}
+.seg-task{padding:2px 8px;border-radius:6px;background:rgba(89,168,255,.13);color:#a8d0f8;font-size:12px}
+.seg-arrow{color:#5f7896}.seg-note{margin-top:8px;font-size:12px;color:var(--muted)}
+.footnote{margin:18px 0 0;font-size:12px;color:#7189a5}
+@media(max-width:900px){main{grid-template-columns:1fr}aside{border-left:0;border-top:1px solid var(--line)}header,footer{padding:20px}}
+</style></head><body><header>
+<div class="hero"><div class="hero-main"><h1>${escape(state.project.name)}</h1>
+<div class="sub" id="overview" data-scheduler-revision="${state.revision}">
+<span class="chip">${refresh ? "只读实时视图" : "只读快照"}</span><span class="chip">revision ${state.revision}</span>
+<span class="chip ${state.paused ? "warn" : "ok"}">${state.paused ? "已暂停" : "可调度"}</span>
+<span class="chip">${tasks.length} 个任务</span><span class="chip">${p.ready.length} 个就绪</span><span class="chip">${running} 个进行中</span><span class="chip">${done} 个完成</span>
+<span class="progress" role="img" aria-label="完成 ${percent}%"><span style="width:${percent}%"></span></span></div></div>
+<div class="legend"><span class="legend-label">状态</span>${statusLegend}${categories.length ? '<span class="legend-label">类别</span>' + categoryLegend : ""}</div></div>
+<div class="toolbar"><label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="search" type="search" aria-label="搜索任务、类别或执行者" placeholder="搜索任务、类别或执行者"></label>
+<div class="zoom"><button id="minus" aria-label="缩小流程图">−</button><button id="plus" aria-label="放大流程图">＋</button></div>
+${refresh ? '<button id="refresh" class="primary">刷新状态</button>' : ""}<span id="refresh-status" role="status">${refresh ? "等待首次更新；刷新只读取状态。" : "静态快照；重新导出后刷新浏览器查看。"}</span></div>
+</header>
 <main><div id="canvas"><svg id="graph" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6" fill="#8196b0"/></marker></defs>
-${lanes.map(l => `<rect class="lane" x="12" y="${l.top}" width="${width - 24}" height="${l.height}" rx="12"/><text class="lane-label" x="32" y="${l.top + 27}">${escape(l.category)}</text>`).join("")}${edges}${nodes}
-${nodes ? "" : '<text x="32" y="60">尚无任务</text>'}</svg></div>
-<aside><b>任务详情</b><pre id="detail">选择一个节点查看前置、占用和结果。</pre></aside></main>
-<footer><section id="segments"><b>当前建议执行段（后续任务尚未启动）</b><ul>${p.segments.map((s, i) => `<li><span class="segment-title">段 ${i + 1} · ${escape(s.agentId)}</span>：${s.tasks.map(escape).join(" → ")}<br><span class="muted">停止：${escape(s.stop)}</span>${s.checkpoints.length ? `<br>中间交付：${s.checkpoints.map(c => `${escape(c.taskId)}${c.output ? "/" + escape(c.output) : " 完成"} → ${c.consumers.map(escape).join("、")}`).join("；")}` : ""}</li>`).join("") || "<li>暂无执行段</li>"}</ul></section>
-<section id="diagnostics">${p.diagnostics.map(d => `<p class="error">${escape(d)}</p>`).join("")}</section><p class="muted">流程图从调度状态派生。建议段中的任务须依次满足前置；本页只能查看。</p></footer>
+<defs><linearGradient id="card" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2739"/><stop offset="1" stop-color="#151f2e"/></linearGradient>
+<pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.1" fill="#1e2c3f"/></pattern>
+<marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1,1 L9,5.5 L1,10" fill="none" stroke="#6d87a5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="${width}" height="${height}" fill="url(#dots)"/>
+${stages}${edges}${nodes}
+${nodes ? "" : '<text class="node-title" x="32" y="60">尚无任务</text>'}</svg></div>
+<aside><div class="aside-head"><b>任务详情</b><span>点击节点</span></div><pre id="detail">选择一个节点查看前置、占用和结果。</pre></aside></main>
+<footer><section id="segments"><h2>当前建议执行段</h2><p class="footnote" style="margin:4px 0 0">后续任务尚未启动</p><ul>${p.segments.map((s, i) => `<li><div class="segment-title">段 ${i + 1} · ${escape(s.agentId)}</div><div class="seg-tasks">${s.tasks.map((id, k) => (k ? '<span class="seg-arrow">→</span>' : "") + `<span class="seg-task">${escape(id)}</span>`).join("")}</div><div class="seg-note">停止：${escape(s.stop)}</div>${s.checkpoints.length ? `<div class="seg-note">中间交付：${s.checkpoints.map(c => `${escape(c.taskId)}${c.output ? "/" + escape(c.output) : " 完成"} → ${c.consumers.map(escape).join("、")}`).join("；")}</div>` : ""}</li>`).join("") || "<li><div class=\"segment-title\">暂无执行段</div></li>"}</ul></section>
+<section id="diagnostics">${p.diagnostics.map(d => `<p class="error">${escape(d)}</p>`).join("")}</section><p class="footnote">流程图从调度状态派生。建议段中的任务须依次满足前置；本页只能查看。</p></footer>
 <script id="scheduler-data" type="application/json">${json({ revision: state.revision, details })}</script>
 <script>
 const refreshConfig=${json(refresh)};

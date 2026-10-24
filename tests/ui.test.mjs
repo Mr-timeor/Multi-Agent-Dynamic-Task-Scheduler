@@ -74,8 +74,10 @@ test("只读静态图：转义任务文本、脚本可解析、渲染不改变�
 
 test("图表达类别、执行者、建议段与解锁消费者；完成态不再显示可领取", () => {
   const current = state(), first = renderGraph(current);
-  assert.match(first, /class="lane-label"[^>]*>开发/);
-  assert.match(first, /class="lane-label"[^>]*>测试/);
+  assert.match(first, /data-category="开发"[^>]*>\s*<title>/);
+  assert.match(first, /data-category="测试"/);
+  assert.match(first, /class="cat-name"[^>]*>开发/);
+  assert.match(first, /class="cat-name"[^>]*>测试/);
   assert.match(first, /段 1 · developer/);
   assert.match(first, /中间交付：A1\/api → B1/);
   assert.match(payload(first).details.A1, /执行者：developer/);
@@ -85,6 +87,26 @@ test("图表达类别、执行者、建议段与解锁消费者；完成态不�
   const broken = state(); broken.project.tasks[0].dependsOn = [{ taskId: "B1" }];
   assert.match(renderGraph(broken), /循环/);
 });
+
+test("竖向布局：依赖自上而下、同阶段同行、阶段标签与竖向连线", () => {
+  const html = renderGraph(state());
+  const at = id => {
+    const match = html.match(new RegExp(`data-id="${id}"[^>]*transform="translate\\(([-\\d.]+),([-\\d.]+)\\)"`));
+    return match && { x: Number(match[1]), y: Number(match[2]) };
+  };
+  const a1 = at("A1"), a2 = at("A2"), b1 = at("B1");
+  assert.ok(a1 && a2 && b1, "节点应带坐标");
+  assert.ok(a2.y > a1.y && a2.y - a1.y > 112, "下游任务必须在父任务下方一行");
+  assert.equal(a2.y, b1.y, "同一阶段的任务同行");
+  assert.ok(b1.x > a2.x, "同阶段按类别分组，测试排在开发之后");
+  assert.match(html, /class="stage-label"[^>]*>阶段 1</);
+  assert.match(html, /class="stage-label"[^>]*>阶段 2</);
+  // 每条依赖边都从父节点底部往下走，且终点是子节点顶部。
+  const edges = [...html.matchAll(/class="edge" d="M([\d.]+),([\d.]+)[^"]*L([\d.]+),([\d.]+)"/g)];
+  assert.ok(edges.length >= 2, "应画出全部依赖边");
+  for (const [, , sy, ex, ey] of edges) assert.ok(Number(ey) > Number(sy), `边 ${ex} 必须向下`);
+});
+
 
 test("静态图无网络；宿主HTML刷新保留搜索、选中任务、缩放与滚动", () => {
   const current = state(), harness = clientHarness(renderGraph(current));
