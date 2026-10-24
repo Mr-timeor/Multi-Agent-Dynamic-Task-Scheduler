@@ -61,4 +61,4 @@ duration-01技术闭环通过：[评审](docs/duration-01评审.md)。78次已�
 - [Harness接入证据](docs/Harness接入证据.md)：宿主源码依据和待验证项。
 - [任务清单](docs/任务清单.md)、[任务集](.pi/task_set.json)、[项目记录](docs/项目记录.md)。
 
-项目许可证及远程发布方式待用户决定。当前没有引入参考调度项目代码。核心无运行时依赖；构建依赖与许可见使用文档。
+项目采用[MIT许可证](LICENSE)，源码仓库为[Mr-timeor/Multi-Agent-Dynamic-Task-Scheduler](https://github.com/Mr-timeor/Multi-Agent-Dynamic-Task-Scheduler)。当前没有引入参考调度项目代码。核心无运行时依赖；构建依赖与许可见使用文档。
